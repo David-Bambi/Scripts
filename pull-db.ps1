@@ -17,9 +17,9 @@ $datetime = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 if ((Test-Path "$DropboxDirectory\$PulledDirectory") -and
     (Test-Path "$LocalDirectory\$PulledDirectory"))
 {
-    # Sauvegarder une nouvelle histoire
-    Move-Item -Path "$LocalDirectory\$PulledDirectory" -Destination "$Backup\$datetime$operation" -Force
 
+    # Sauvegarder une nouvelle histoire
+    Copy-Item -Path "$LocalDirectory$PulledDirectory" -Destination "$Backup\$datetime$operation" -Recurse -Force
     $History = Get-ChildItem $Backup
     # Si on a plus que 20 histoires on supprime les plus vielles histoires
     $HistoryCount = ($History | Measure-Object ).Count
@@ -35,7 +35,29 @@ if ((Test-Path "$DropboxDirectory\$PulledDirectory") -and
 
 if (Test-Path "$DropboxDirectory\$PulledDirectory")
 {
-    # TODO : Copier seulement les fichiers non présents ou modifier et supprimer les fichiers non présents
-    #        au lieu de tout supprimer.
-    Copy-Item -Path "$DropboxDirectory\$PulledDirectory" -Destination "$LocalDirectory\" -Recurse -Force
+    $files = Get-ChildItem –Path "$DropboxDirectory\$PulledDirectory" -Recurse -Force -Attributes !Directory
+
+
+    for ($i=0; $i -lt $files.Count; $i++)
+    {
+        $test = [regex]::split($files[$i].FullName, "D:\\Dropbox\\")
+        $towrite = $LocalDirectory+$test[1]
+        if (Test-Path $towrite)
+        {
+            $fileTmp = Get-Item $towrite
+            if($fileTmp.LastWriteTime -lt $files[$i].LastWriteTime)
+            {
+                Write-Host $fileTmp
+                Copy-Item -Path $files[$i].FullName -Destination $fileTmp -Recurse -Force
+            }
+        }
+        else
+        {
+            Write-Host $towrite
+            New-Item -ItemType File -Path $towrite -Force
+            Copy-Item -Path $files[$i].FullName -Destination $towrite -Force
+        }
+    }
+    
+   
 }
